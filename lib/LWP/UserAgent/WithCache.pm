@@ -4,7 +4,7 @@ use strict;
 
 use base qw(LWP::UserAgent);
 
-our $VERSION = '0.01';
+our $VERSION = '0.02';
 
 use Cache::FileCache;
 
@@ -39,6 +39,9 @@ sub request {
                              HTTP::Date::time2str($obj->get_created_at));
          $args[0] = $request;
          $res = $self->SUPER::request(@args);
+         if ($res->code ne '304'){
+             $cache->set($uri, $res->content); 
+         }
      }else{
          $res = $self->SUPER::request(@args);
          $cache->set($uri, $res->content); 
