@@ -1,12 +1,12 @@
-package LWP::UserAgent::WithCache;
+# $Id: WithCache.pm,v 1.4 2005/02/23 11:25:44 sekimura Exp $
 
+package LWP::UserAgent::WithCache;
 use strict;
 
 use base qw(LWP::UserAgent);
-
-our $VERSION = '0.02';
-
 use Cache::FileCache;
+
+our $VERSION = '0.03';
 
 our $HOME = $ENV{'HOME'} || $ENV{'LOGDIR'};
 our %default_cache_args = (
@@ -30,24 +30,46 @@ sub request {
      my $uri = $request->uri->as_string;
      my $cache = $self->{cache};
 
-     my $content = $cache->get( $uri );
+     my $obj = $cache->get( $uri );
 
-     my $res;
-     if ( defined $content ) {
-         my $obj = $cache->get_object( $uri );
-         $request->header('If-Modified-Since' =>
-                             HTTP::Date::time2str($obj->get_created_at));
-         $args[0] = $request;
-         $res = $self->SUPER::request(@args);
-         if ($res->code ne '304'){
-             $cache->set($uri, $res->content); 
+
+     if ( defined $obj ) {
+
+         # XXX: return cached response before "Expires"
+         if (defined $obj->{expires} and $obj->{expires} > time()) {
+             return HTTP::Response->parse($obj->{as_string});
+         } 
+
+         if (defined $obj->{last_modified}) {
+             $request->header('If-Modified-Since' =>
+                              HTTP::Date::time2str($obj->{last_modified}));
          }
-     }else{
-         $res = $self->SUPER::request(@args);
-         $cache->set($uri, $res->content); 
+
+         if (defined $obj->{etag}) {
+             $request->header('If-None-Match' => $obj->{etag});
+         }
+
+         $args[0] = $request;
      }
 
+     my $res = $self->SUPER::request(@args);
+     $self->set_cache($uri, $res) if $res->code eq HTTP::Status::RC_OK;
+
      return $res;
+}
+
+sub set_cache {
+    my $self = shift;
+    my ($uri, $res) = @_;
+    my $cache = $self->{cache};
+
+    $cache->set($uri,{
+         content       => $res->content,
+         last_modified => $res->last_modified,
+         etag          => $res->header('Etag') ? $res->header('Etag') : undef,
+         expires       => $res->expires ? $res->expires : undef,
+         as_string     => $res->as_string,
+    }); 
 }
 
 1;
@@ -71,7 +93,7 @@ LWP::UserAgent::WithCache - LWP::UserAgent extension with local cache
 
 LWP::UserAgent::WithCache is a LWP::UserAgent extention.
 It handle 'If-Modified-Since' request header with local cache file.
-locala cache files are implemented by Cache::FileCache module. 
+local cache files are implemented by Cache::FileCache. 
 
 =head1 METHODS
 
@@ -83,7 +105,7 @@ L<LWP::UserAgent>, L<Cache::Cache>, L<Cache::FileCache>
 
 =head1 AUTHOR
 
-Masayoshi Sekimura E<lt>sekimura@qootas.org<gt>
+Masayoshi Sekimura E<lt>sekimura@qootas.orgE<gt>
 
 This library is free software; you can redistribute it and/or modify
 it under the same terms as Perl itself.
