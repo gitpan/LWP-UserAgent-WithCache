@@ -1,0 +1,6 @@
+Revision history for Perl extension LWP::UserAgent::WithCache.
+
+0.01  Wed Sep 29 17:24:06 2004
+	- original version; created by h2xs 1.23 with options
+		-AX -n LWP::UserAgent::WithCache
+
