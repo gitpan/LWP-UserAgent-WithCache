@@ -6,7 +6,7 @@ use strict;
 use base qw(LWP::UserAgent);
 use Cache::FileCache;
 
-our $VERSION = '0.03';
+our $VERSION = '0.05';
 
 our $HOME = $ENV{'HOME'} || $ENV{'LOGDIR'};
 our %default_cache_args = (
@@ -27,16 +27,16 @@ sub request {
      my $self = shift;
      my @args = @_;
      my $request = $args[0];
+
+     return $self->SUPER::request(@args) if $request->method ne 'GET';
+
      my $uri = $request->uri->as_string;
      my $cache = $self->{cache};
-
      my $obj = $cache->get( $uri );
-
 
      if ( defined $obj ) {
 
-         # XXX: return cached response before "Expires"
-         if (defined $obj->{expires} and $obj->{expires} > time()) {
+         unless (defined $obj->{expires} and $obj->{expires} <= time()) {
              return HTTP::Response->parse($obj->{as_string});
          } 
 
