@@ -5,13 +5,14 @@ use strict;
 
 use base qw(LWP::UserAgent);
 use Cache::FileCache;
+use File::HomeDir;
+use File::Spec;
 
-our $VERSION = '0.06';
+our $VERSION = '0.09';
 
-our $HOME = $ENV{'HOME'} || $ENV{'LOGDIR'};
 our %default_cache_args = (
     'namespace' => 'lwp-cache',
-    'cache_root' => "$HOME/.cache",
+    'cache_root' => File::Spec->catfile(File::HomeDir->my_home, '.cache'),
     'default_expires_in' => 600 );
 
 sub new {
@@ -105,7 +106,7 @@ L<LWP::UserAgent>, L<Cache::Cache>, L<Cache::FileCache>
 
 =head1 AUTHOR
 
-Masayoshi Sekimura E<lt>sekimura@qootas.orgE<gt>
+Masayoshi Sekimura E<lt>sekimura at gmail dot comE<gt>
 
 This library is free software; you can redistribute it and/or modify
 it under the same terms as Perl itself.
