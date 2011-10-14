@@ -8,7 +8,7 @@ use Cache::FileCache;
 use File::HomeDir;
 use File::Spec;
 
-our $VERSION = '0.11';
+our $VERSION = '0.12';
 
 our %default_cache_args = (
     'namespace' => 'lwp-cache',
@@ -48,7 +48,7 @@ sub request {
 
      if ( defined $obj ) {
 
-         unless (defined $obj->{expires} and $obj->{expires} <= time()) {
+         if (defined $obj->{expires} and $obj->{expires} > time()) {
              return HTTP::Response->parse($obj->{as_string});
          } 
 
@@ -65,7 +65,16 @@ sub request {
      }
 
      my $res = $self->SUPER::request(@args);
-     $self->set_cache($uri, $res) if $res->code eq HTTP::Status::RC_OK;
+
+     ## return cached data if it is "Not Modified"
+     if ($res->code eq HTTP::Status::RC_NOT_MODIFIED) {
+        return HTTP::Response->parse($obj->{as_string});
+     }
+
+     ## cache only "200 OK" content
+     if ($res->code eq HTTP::Status::RC_OK) {
+        $self->set_cache($uri, $res);
+     }
 
      return $res;
 }
